@@ -108,22 +108,54 @@ namespace esphome
         /////////////////////////////////////////////////////////////////////////////////////////////
         void CenturyVSPump::process_modbus_data_(const CenturyPumpCommand *response)
         {
-            // Ensure function matches ...
-            if (response->payload_[0] != response->function_)
+            if (response->payload_.empty())
             {
-                ESP_LOGW(TAG, "Payload data function mismatch (%X != %X), ignoring", response->payload_[0], response->function_);
+                ESP_LOGW(TAG, "Empty MODBUS response payload, ignoring");
+                return;
+            }
+
+            // ESPHome <= 2026.6 included the custom Modbus function code
+            // as the first byte of payload_.
+            //
+            // ESPHome >= 2026.7 strips the function code before calling
+            // on_modbus_data().
+            //
+            // Support both formats.
+
+            size_t offset = 0;
+
+            if (response->payload_[0] == response->function_)
+            {
+                // Old ESPHome format:
+                // [function] [ACK] [data...]
+                offset = 1;
+            }
+
+            // Make sure an ACK byte exists
+            if (response->payload_.size() <= offset)
+            {
+                ESP_LOGW(TAG, "MODBUS response missing ACK byte, ignoring");
                 return;
             }
 
             // Ensure ACK was OK
-            if (response->payload_[1] != 0x10)
+            if (response->payload_[offset] != 0x10)
             {
-                ESP_LOGW(TAG, "Function %X NACK with %X, ignoring", response->function_, response->payload_[0]);
+                ESP_LOGW(
+                    TAG,
+                    "Function %X NACK with %X, ignoring",
+                    response->function_,
+                    response->payload_[offset]
+                );
                 return;
             }
 
-            // Pass to handler function
-            std::vector<uint8_t> data(response->payload_.begin() + 2, response->payload_.end());
+            // Pass remaining payload to handler
+            std::vector<uint8_t> data(
+                response->payload_.begin() + offset + 1,
+                response->payload_.end()
+            );
+
             response->on_data_func_(this, data);
         }
 
