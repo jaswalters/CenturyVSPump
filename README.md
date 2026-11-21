@@ -34,6 +34,8 @@ For some reason, the pump doesn't talk basic Modbus (coils and registers) which 
 
 # Software
 
+Requires ESPHome 2026.8.0 or newer (the modbus client hub in that release supports the custom function codes this pump uses).
+
 I won't go into how to flash these devices, there are tons of resources available, you can start looking at https://esphome.io/
 
 Since this pump code is based off of data gleaned from an unsupported document, I won't be pushing this pump code to the ESPHome main branch, but you can get it from my GIT repo using this YAML.
@@ -64,8 +66,9 @@ uart:
   rx_pin: GPIO22
   tx_pin: GPIO19
 
-# You need the modbus component installed too
+# You need the modbus component installed too, as a client
 modbus:
+  role: client
 
 # Include the CenturyVSPump external component in your firmware
 centuryvspump:

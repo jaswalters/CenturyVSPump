@@ -1,7 +1,6 @@
 esphome:
-  platform: esp32
   name: century-vs-pump-controller
-  board: pico32
+  min_version: 2026.8.0
   on_boot:
     then:
       light.turn_on:
@@ -10,6 +9,8 @@ esphome:
         brightness: 0.3
         green: 1.0
         red: 1.0
+esp32:
+  board: pico32
 wifi:
   ap:
     password: !secret ap_PWD
@@ -19,9 +20,11 @@ wifi:
 captive_portal:
 logger:
 api:
-  password: !secret api_PWD
+  encryption:
+    key: !secret api_encryption_key
 ota:
-  password: !secret ota_PWD
+  - platform: esphome
+    password: !secret ota_PWD
 time:
   - platform: homeassistant
     id: homeassistant_time
@@ -64,14 +67,16 @@ button:
             value: 3450
 centuryvspump:
 light:
-  - platform: neopixelbus
+  - platform: esp32_rmt_led_strip
     name: Pool Pump Controller LED
     id: id_light_1
     num_leds: 1
     pin: GPIO27
-    variant: SK6812
+    chipset: SK6812
+    channel_colors: GRB
 modbus:
   id: id_modbus_3
+  role: client
 number:
   - platform: centuryvspump
     name: Pool Pump Controller Demand

@@ -9,6 +9,8 @@
 
 #include <queue>
 #include <list>
+#include <memory>
+#include <span>
 
 // #define MODBUS_ENABLE_SWITCH
 
@@ -85,12 +87,11 @@ namespace esphome
 
         /////////////////////////////////////////////////////////////////////////////////////////////////
         //
-        //  To work successfully, this component needs modification to the ESPHome modbus.cpp file which
-        //  can be found in the `modbus` component in https://github.com/gazoodle/esphome branch
-        //  "Feature-Request-#1725"
+        //  Requires ESPHome >= 2026.8, whose modbus client hub supports the user defined function codes
+        //  this pump uses.
         //
         class CenturyVSPump : public PollingComponent,
-                              public ModbusDevice
+                              public ModbusClientDevice
         {
         public:
             CenturyVSPump() {}
@@ -103,9 +104,13 @@ namespace esphome
             void dump_config() override;
 
             /// called when a modbus response was parsed without errors
-            void on_modbus_data(const std::vector<uint8_t> &data) override;
+            void on_response(std::span<const uint8_t> request_pdu, std::span<const uint8_t> response_pdu) override;
             /// called when a modbus error response was received
-            void on_modbus_error(uint8_t function_code, uint8_t exception_code) override;
+            void on_error(std::span<const uint8_t> request_pdu, ExceptionCode exception_code) override;
+            /// called when no response arrived in time, return true to have the hub resend the frame
+            bool on_no_response(std::span<const uint8_t> request_pdu) override;
+            /// called when the hub dropped our request before sending it
+            void on_not_sent(std::span<const uint8_t> request_pdu) override;
             /// Registers an item with the controller. Called by esphomes code generator
             void add_item(CenturyPumpItemBase *item) { items_.push_back(item); }
             void queue_command_(const CenturyPumpCommand &cmd);
@@ -117,8 +122,10 @@ namespace esphome
         private:
             std::list<std::unique_ptr<CenturyPumpCommand>> command_queue_;
             std::queue<std::unique_ptr<CenturyPumpCommand>> response_queue_;
-            uint32_t last_command_timestamp_;
+            uint32_t last_command_timestamp_{0};
             uint16_t command_throttle_{10};
+            // true while the front command has been handed to the modbus hub and awaits its outcome
+            bool in_flight_{false};
 
         public:
             std::string name_;

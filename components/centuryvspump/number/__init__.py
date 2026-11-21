@@ -1,9 +1,10 @@
+import logging
+
 from esphome.components import number
 import esphome.config_validation as cv
 import esphome.codegen as cg
 
-from esphome.const import CONF_ID, CONF_ADDRESS
-from esphome.cpp_helpers import logging
+from esphome.const import CONF_ID
 
 from .. import (
     add_century_vs_pump_base_properties,
